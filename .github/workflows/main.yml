@@ -1,31 +1,76 @@
-name: Build IPA
+name: Build iOS IPA
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Extract ZIP Automatically
+      - name: Create App Structure
         run: |
-          mkdir -p app_files
-          unzip -q "*.zip" -d app_files || unzip -q *.zip -d app_files
+          mkdir -p Payload/iFlipper.app
 
-      - name: Create Payload Directory
+      - name: Write Info.plist with Bluetooth Permissions
         run: |
-          mkdir -p Payload/App.app
-          cp -R app_files/* Payload/App.app/
-          
-      - name: Package IPA
+          cat << 'EOF' > Payload/iFlipper.app/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>iFlipper</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.iflipper.app</string>
+              <key>CFBundleName</key>
+              <string>iFlipper</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+              <key>NSBluetoothAlwaysUsageDescription</key>
+              <string>Need Bluetooth access to connect to Flipper Zero</string>
+              <key>NSBluetoothPeripheralUsageDescription</key>
+              <string>Need Bluetooth access to connect to Flipper Zero</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Compile Swift Source Code
+        run: |
+          cat << 'EOF' > main.swift
+          import Foundation
+          import CoreBluetooth
+
+          class BluetoothManager: NSObject, CBCentralManagerDelegate {
+              var centralManager: CBCentralManager!
+              override init() {
+                  super.init()
+                  centralManager = CBCentralManager(delegate: self, queue: nil)
+              }
+              func centralManagerDidUpdateState(_ central: CBCentralManager) {
+                  print("Bluetooth State: \(central.state.rawValue)")
+              }
+          }
+
+          let bm = BluetoothManager()
+          print("iFlipper iOS App Started")
+          EOF
+
+          xcrun -sdk iphoneos swiftc -target arm64-apple-ios14.0 main.swift -o Payload/iFlipper.app/iFlipper
+
+      - name: Zip into IPA
         run: |
           zip -r iFlipper.ipa Payload
 
-      - name: Upload IPA Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: iFlipper-IPA
