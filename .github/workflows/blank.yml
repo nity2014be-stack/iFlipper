@@ -1,0 +1,47 @@
+name: Build Real IPA
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Cordova
+        run: npm install -g cordova
+
+      - name: Extract ZIP and Prepare Web Assets
+        run: |
+          unzip iFlipper_App_Package.zip -d extracted_app || unzip *.zip -d extracted_app
+          mkdir -p www
+          cp -R extracted_app/* www/
+
+      - name: Create Cordova Project & Build iOS
+        run: |
+          cordova create myApp com.iflipper.app iFlipper
+          cd myApp
+          cp -R ../www/* www/
+          cordova platform add ios
+          cordova build ios --emulator
+
+      - name: Package IPA
+        run: |
+          cd myApp/platforms/ios/build/emulator
+          mkdir -p Payload
+          cp -R iFlipper.app Payload/
+          zip -r iFlipper.ipa Payload
+
+      - name: Upload Real IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: iFlipper-IPA-Real
+          path: myApp/platforms/ios/build/emulator/iFlipper.ipa
