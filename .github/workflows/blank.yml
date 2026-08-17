@@ -19,9 +19,11 @@ jobs:
       - name: Install Cordova
         run: npm install -g cordova
 
-      - name: Extract ZIP and Prepare Web Assets
+      - name: Find and Extract ZIP Automatically
         run: |
-          unzip iFlipper_App_Package.zip -d extracted_app || unzip *.zip -d extracted_app
+          ZIP_FILE=$(ls *.zip | head -n 1)
+          echo "Found ZIP: $ZIP_FILE"
+          unzip "$ZIP_FILE" -d extracted_app
           mkdir -p www
           cp -R extracted_app/* www/
 
