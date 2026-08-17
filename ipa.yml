@@ -1,0 +1,31 @@
+name: Build IPA
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Extract ZIP
+        run: |
+          unzip iFlipper_App_Package.zip -d app_files || unzip *.zip -d app_files
+
+      - name: Create Payload Directory
+        run: |
+          mkdir -p Payload/App.app
+          cp -R app_files/* Payload/App.app/
+          
+      - name: Package IPA
+        run: |
+          zip -r iFlipper.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iFlipper-IPA
+          path: iFlipper.ipa
