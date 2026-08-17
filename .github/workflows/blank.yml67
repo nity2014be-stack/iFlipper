@@ -1,0 +1,40 @@
+name: Build IPA
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Extract ZIP
+        run: |
+          mkdir -p app_files
+          unzip -q "*.zip" -d app_files || unzip -q *.zip -d app_files
+
+      - name: Find and Organize Payload
+        run: |
+          mkdir -p Payload
+          # מחפש אוטומטית איפה נמצא תיקיית ה-.app או קובץ ה-Info.plist ומעתיק אותם נכון
+          APP_DIR=$(find app_files -name "*.app" -type d | head -n 1)
+          if [ -z "$APP_DIR" ]; then
+            # אם אין תיקיית app, ניצור אחת ונעטוף את הקבצים
+            mkdir -p Payload/App.app
+            cp -R app_files/* Payload/App.app/
+          else
+            cp -R "$APP_DIR" Payload/App.app
+          fi
+          
+      - name: Package IPA
+        run: |
+          cd Payload && zip -r ../iFlipper.ipa *
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iFlipper-IPA
+          path: iFlipper.ipa
